@@ -1,0 +1,40 @@
+name: Deploy Compute Engine
+
+on:
+  push:
+    branches:
+      - main  # Run workflow on push to main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: thinking-digit-453414-n9
+
+      - name: Create GCE VM
+        run: |
+          gcloud compute instances create my-vm \
+            --zone=us-central1-a \
+            --machine-type=e2-medium \
+            --image-family=debian-11 \
+            --image-project=debian-cloud \
+            --boot-disk-size=20GB \
+            --tags=http-server,https-server \
+            --metadata=startup-script='#!/bin/bash
+            echo "Hello, world!" > /var/www/html/index.html'
+
+      - name: Get VM External IP
+        run: |
+          gcloud compute instances describe my-vm --zone=us-central1-a --format="get(networkInterfaces[0].accessConfigs[0].natIP)"
